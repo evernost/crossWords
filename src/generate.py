@@ -22,6 +22,7 @@
 # EXTERNAL LIBS
 # =============================================================================
 import argparse
+import unicodedata
 
 
 
@@ -34,7 +35,7 @@ class CrosswordGen :
   """
   
   def __init__(self, gridSizeH, gridSizeV, language = "fr") :
-    self.language = "fr"
+    self.language = language
     self.gridSizeH = gridSizeH
     self.gridSizeV = gridSizeV
     self.wordList = []
@@ -57,24 +58,33 @@ class CrosswordGen :
       wordListFile = "./src/wordListFrench.txt"
     else :
       print("[ERROR] This language is not supported.")
+      print("        Supported dictionaries:")
+      print("        - French  ('fr')")
+      print("        - English ('en')")
+      print("        - German  ('de')")
       quit()
-
 
     self.wordSizeMin = 100; self.wordSizeMax = 0
     with open(wordListFile, "r", encoding = "utf-8") as file :
       for line in file :
         
-        # Remove '\n'
+        # TODO: exclude words with hyphen
+        # ...
+
+        # Remove trailing '\n'
         line = line.strip()
         
-        # Keep unaccentuated chars only
-        if all(ord(char) < 128 for char in line):
-          if (len(line) < self.wordSizeMin) :
-            self.wordSizeMin = len(line)
-          elif (len(line) > self.wordSizeMax) :
-            self.wordSizeMax = len(line)
-
-          self.wordList.append(line)
+        # Convert letters to their unaccentuated version
+        # "NFD" = Normalisation Form Decomposed
+        # "Mn" = nonspacing mark
+        tmp = "".join(c for c in unicodedata.normalize("NFD", line) if unicodedata.category(c) != "Mn")
+        self.wordList.append(tmp)
+      
+        #if all(ord(char) < 128 for char in line):
+        if (len(line) < self.wordSizeMin) :
+          self.wordSizeMin = len(line)
+        elif (len(line) > self.wordSizeMax) :
+          self.wordSizeMax = len(line)
 
     print(f"[INFO] {len(self.wordList)} words loaded.")
     print(f"       Word size range: {self.wordSizeMin} to {self.wordSizeMax}")
@@ -92,10 +102,14 @@ class CrosswordGen :
     The requirements must be provided as a list of tuples.
     Each tuple contains an index (1-indexed) and the letter that must appear
     at this index.
+
     EXAMPLE: reqs = [('q', 1), ('t', 4)] would return the list ['quit']
 
     A word length criteria can be added too (argument 'size') 
     If omitted, words of any size with matching requirements will be returned.
+
+    Also, the list of requirements can be left empty (e.g. you only care 
+    about words of a given size)
     """
 
     if (size > self.wordSizeMax) :
@@ -105,15 +119,26 @@ class CrosswordGen :
       out = []
       for w in self.wordList :
         valid = True
-        for (letter, index) in reqs :
-          if (index > len(w)) :
-            valid = False
-            break
-          else :
-            if (w[index-1] != letter) :
+        
+        # TODO: take the max index of all requirements
+        # If longer than the size of the word, don't bother.
+
+        # Has the word the right size (if any size constraint)?
+        if (((size > -1) and len(w) == size) or (size == -1)) :
+          
+          # Loop on the requirements 
+          for (letter, index) in reqs :
+            if (index > len(w)) :
               valid = False
               break
+            else :
+              if (w[index-1] != letter) :
+                valid = False
+                break
+        else :
+          valid = False
         
+        # If all tests passed, keep that word.
         if valid :
           out.append(w)
 
@@ -144,9 +169,9 @@ if (__name__ == '__main__') :
 
   args = parser.parse_args()
   
-  
   cwg = CrosswordGen(args.grid_size_h, args.grid_size_v, language = "fr")
-  
-  print(cwg._find([("q", 1), ("u", 4)]))
+  print(cwg._find([("q", 1), ("u", 2)], size = 4))
+  print(cwg._find([], size = 19))
+  print(cwg._find([], size = 13))
+  print(cwg._find([("n", 5)], size = 12))
 
-  
