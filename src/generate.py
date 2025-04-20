@@ -22,6 +22,7 @@
 # EXTERNAL LIBS
 # =============================================================================
 import argparse
+import random
 import unicodedata
 
 
@@ -36,12 +37,16 @@ class CrosswordGen :
   
   def __init__(self, gridSizeH, gridSizeV, language = "fr") :
     self.language = language
+    
     self.gridSizeH = gridSizeH
     self.gridSizeV = gridSizeV
+    self.grid = [[]]
+
+    self.history = []
+
     self.wordList = []
     self.wordSizeMin = 0
     self.wordSizeMax = 0
-
     self._loadWordList()
 
 
@@ -92,16 +97,18 @@ class CrosswordGen :
  
 
   # ---------------------------------------------------------------------------
-  # [PRIVATE] METHOD: CrosswordGen._find()
+  # [PRIVATE] METHOD: CrosswordGen._test()
   # ---------------------------------------------------------------------------
-  def _find(self, reqs = [], size = -1) :
+  def _test(self, reqs = [], size = -1) :
     """
-    Finds the subset of words in the dictionary satisfying a list of requirements.
-    Returns a list with all the solutions found.
-    
-    The requirements must be provided as a list of tuples.
-    Each tuple contains an index (1-indexed) and the letter that must appear
-    at this index.
+    Checks whether there are any words in the dictionary that satisfy a given 
+    set of requirements.
+    Returns True if at least one word meets the criteria, False otherwise.
+
+    A requirement is a constraint on the letter at a specific position in a word.
+
+    Requirements must be provided as a list of tuples.
+    Each tuple contains an index (1-based) and the letter that must appear at that index.
 
     EXAMPLE: reqs = [('q', 1), ('t', 4)] would return the list ['quit']
 
@@ -110,6 +117,71 @@ class CrosswordGen :
 
     Also, the list of requirements can be left empty (e.g. you only care 
     about words of a given size)
+
+    NOTE: if you want the actual list of words instead of only a test, use 
+    '_list()' instead.
+    """
+
+    # Size req exceeds the longest known word
+    if (size > self.wordSizeMax) :
+      return False
+    
+    else :
+      
+      # Find the highest requirement
+      highestIndex = max((index for (letter, index) in reqs), default = 1)
+      
+      
+      
+      for w in self.wordList :
+        valid = True
+
+        # Has the word the right size (if any size constraint)?
+        if (((size > -1) and len(w) == size) or (size == -1)) :
+          
+          # Loop on the requirements 
+          for (letter, index) in reqs :
+            if (index > len(w)) :
+              valid = False
+              break
+            else :
+              if (w[index-1] != letter) :
+                valid = False
+                break
+        else :
+          valid = False
+        
+        # If all tests passed, keep that word.
+        if valid :
+          out.append(w)
+
+      return out
+
+
+
+  # ---------------------------------------------------------------------------
+  # [PRIVATE] METHOD: CrosswordGen._list()
+  # ---------------------------------------------------------------------------
+  def _list(self, reqs = [], size = -1) :
+    """
+    Lists the words in the dictionary that satisfy a given set of requirements.
+    Returns a list of all matching words.
+
+    A requirement is a constraint on the letter at a specific position in a word.
+
+    Requirements must be provided as a list of tuples.
+    Each tuple contains an index (1-based) and the letter that must appear at that index.
+
+    EXAMPLE: reqs = [('q', 1), ('t', 4)] would return the list ['quit']
+
+    A word length criteria can be added too (argument 'size') 
+    If omitted, words of any size with matching requirements will be returned.
+
+    Also, the list of requirements can be left empty (e.g. you only care 
+    about words of a given size)
+
+    NOTE: if you don't want to list the words but rather check if there
+    are solutions, use '_test()' instead (more efficient)
     """
 
     if (size > self.wordSizeMax) :
@@ -146,6 +218,47 @@ class CrosswordGen :
 
 
 
+  # ---------------------------------------------------------------------------
+  # [PRIVATE] METHOD: CrosswordGen._pickRow()
+  # ---------------------------------------------------------------------------
+  def _pickRow(self) :
+    """
+    Returns a random row number in the grid (between 1 and gridSizeV)
+    """
+
+    return random.randint(1, self.gridSizeV)
+
+
+
+  # ---------------------------------------------------------------------------
+  # [PRIVATE] METHOD: CrosswordGen._pickColumn()
+  # ---------------------------------------------------------------------------
+  def _pickColumn(self) :
+    """
+    Returns a random column number in the grid (between 1 and gridSizeH)
+    """
+
+    return random.randint(1, self.gridSizeH)
+
+
+
+  # ---------------------------------------------------------------------------
+  # [PRIVATE] METHOD: CrosswordGen._solve()
+  # ---------------------------------------------------------------------------
+  def _solve(self) :
+    """
+    Proposes content for a row/column satisfying the given requirements.
+
+    Multiple strategies:
+    - Fill the entire line with 
+    """
+
+    pass
+
+
+
+
+
 # -----------------------------------------------------------------------------
 # MAIN (UNIT TESTS)
 # -----------------------------------------------------------------------------
@@ -170,8 +283,9 @@ if (__name__ == '__main__') :
   args = parser.parse_args()
   
   cwg = CrosswordGen(args.grid_size_h, args.grid_size_v, language = "fr")
-  print(cwg._find([("q", 1), ("u", 2)], size = 4))
-  print(cwg._find([], size = 19))
-  print(cwg._find([], size = 13))
-  print(cwg._find([("n", 5)], size = 12))
+  print(cwg._list([("q", 1), ("u", 2)], size = 4))
+  print(cwg._list([], size = 19))
+  print(cwg._list([], size = 13))
+  print(cwg._list([("n", 5)], size = 12))
+  print(cwg._list([("l", 3), ("b", 11)], size = 13))
 
